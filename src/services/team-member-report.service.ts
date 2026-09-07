@@ -42,8 +42,13 @@ const getDateRange = (date: Date) => {
   return { gte: start, lt: end };
 };
 
-const buildWhere = (userId: number, filters: ReportFilters) => ({
-  userId,
+const buildWhere = (userId: number | undefined, filters: ReportFilters) => ({
+  ...(userId
+    ? { userId }
+    : filters.teamMemberId
+      ? { userId: filters.teamMemberId }
+      : {}),
+  ...(filters.projectId ? { projectId: filters.projectId } : {}),
   ...(filters.status ? { status: filters.status } : {}),
   ...(
     filters.date
@@ -79,7 +84,7 @@ const toSummary = (report: any) => ({
 });
 
 export const getTeamMemberReports = async (
-  userId: number,
+  userId: number | undefined,
   filters: ReportFilters
 ) => {
   const reports = await prisma.report.findMany({
@@ -102,10 +107,13 @@ export const getTeamMemberReports = async (
 
 export const getTeamMemberReportById = async (
   reportId: number,
-  userId: number
+  userId?: number
 ) => {
   const report = await prisma.report.findFirst({
-    where: { id: reportId, userId },
+    where: {
+      id: reportId,
+      ...(userId !== undefined ? { userId } : {})
+    },
     include: {
       project: {
         select: { id: true, name: true, description: true }

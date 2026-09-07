@@ -20,8 +20,8 @@ const router = Router();
 router.use(authenticate);
 
 // only team members create their own reports
-router.get("/", requireRole(Role.TEAM_MEMBER), getReports);
-router.get("/:id", requireRole(Role.TEAM_MEMBER), getReportById);
+router.get("/", getReports);
+router.get("/:id", getReportById);
 router.post("/", requireRole(Role.TEAM_MEMBER), createReport);
 router.delete("/:id", requireRole(Role.TEAM_MEMBER), deleteDraftReport);
 router.patch("/:id", requireRole(Role.TEAM_MEMBER), updateDraftReport);

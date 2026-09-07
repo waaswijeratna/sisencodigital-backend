@@ -1,6 +1,7 @@
 import type { Response } from "express";
 
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
+import { Role } from "../../generated/prisma/enums.js";
 import { parseReportFilters } from "../lib/report-filters.js";
 import {
   getTeamMemberReports,
@@ -10,7 +11,10 @@ import {
 export const getReports = async (req: AuthRequest, res: Response) => {
   try {
     const filters = parseReportFilters(req.query);
-    const reports = await getTeamMemberReports(req.user!.userId, filters);
+    const reports = await getTeamMemberReports(
+      req.user!.role === Role.TEAM_MEMBER ? req.user!.userId : undefined,
+      filters
+    );
 
     return res.status(200).json({ reports });
   } catch (error) {
@@ -35,7 +39,10 @@ export const getReportById = async (req: AuthRequest, res: Response) => {
   }
 
   try {
-    const report = await getTeamMemberReportById(reportId, req.user!.userId);
+    const report = await getTeamMemberReportById(
+      reportId,
+      req.user!.role === Role.TEAM_MEMBER ? req.user!.userId : undefined
+    );
     return res.status(200).json({ report });
   } catch (error) {
     if (error instanceof Error && error.message === "Report not found") {

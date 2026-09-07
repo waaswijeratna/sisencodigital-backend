@@ -5,6 +5,8 @@ export interface ReportFilters {
   date?: Date;
   fromDate?: Date;
   toDate?: Date;
+  teamMemberId?: number;
+  projectId?: number;
 }
 
 const parseDate = (value: unknown) => {
@@ -14,6 +16,19 @@ const parseDate = (value: unknown) => {
 
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const parsePositiveInteger = (value: unknown) => {
+  if (value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string" || !/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return parsed > 0 ? parsed : null;
 };
 
 export const parseReportFilters = (query: Record<string, unknown>) => {
@@ -31,9 +46,17 @@ export const parseReportFilters = (query: Record<string, unknown>) => {
   const date = parseDate(query.date);
   const fromDate = parseDate(query.fromDate);
   const toDate = parseDate(query.toDate);
+  const teamMemberId = parsePositiveInteger(query.teamMemberId);
+  const projectId = parsePositiveInteger(query.projectId);
 
-  if (date === null || fromDate === null || toDate === null) {
-    throw new Error("Invalid report date filter");
+  if (
+    date === null ||
+    fromDate === null ||
+    toDate === null ||
+    teamMemberId === null ||
+    projectId === null
+  ) {
+    throw new Error("Invalid report filter");
   }
 
   if (fromDate && toDate && fromDate > toDate) {
@@ -53,6 +76,12 @@ export const parseReportFilters = (query: Record<string, unknown>) => {
   }
   if (toDate) {
     filters.toDate = toDate;
+  }
+  if (teamMemberId) {
+    filters.teamMemberId = teamMemberId;
+  }
+  if (projectId) {
+    filters.projectId = projectId;
   }
 
   return filters;
