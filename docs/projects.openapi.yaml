@@ -1,0 +1,472 @@
+openapi: 3.0.3
+info:
+  title: Sisencodigital Projects API
+  version: 1.0.0
+  description: Project management endpoints. Authentication uses the HttpOnly token cookie created by the login endpoint.
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+
+tags:
+  - name: Projects
+    description: View and manage projects
+
+paths:
+  /api/projects:
+    get:
+      tags:
+        - Projects
+      summary: List projects
+      description: Returns active projects by default. Set includeInactive to true to include deactivated projects.
+      security:
+        - cookieAuth: []
+      parameters:
+        - name: includeInactive
+          in: query
+          required: false
+          description: Include projects where isActive is false.
+          schema:
+            type: boolean
+            default: false
+          example: true
+      responses:
+        "200":
+          description: Projects returned in ascending name order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectListResponse"
+              examples:
+                activeProjects:
+                  summary: Active projects only
+                  value:
+                    projects:
+                      - id: 1
+                        name: Website Redesign
+                        description: Redesign the public website
+                        isActive: true
+                        createdAt: "2026-09-06T12:00:00.000Z"
+                        updatedAt: "2026-09-06T12:00:00.000Z"
+                includeInactive:
+                  summary: Include inactive projects
+                  value:
+                    projects:
+                      - id: 1
+                        name: Website Redesign
+                        description: Redesign the public website
+                        isActive: true
+                        createdAt: "2026-09-06T12:00:00.000Z"
+                        updatedAt: "2026-09-06T12:00:00.000Z"
+                      - id: 2
+                        name: Legacy Migration
+                        description: Archived migration project
+                        isActive: false
+                        createdAt: "2026-09-01T12:00:00.000Z"
+                        updatedAt: "2026-09-07T12:00:00.000Z"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    post:
+      tags:
+        - Projects
+      summary: Create a project
+      description: Creates an active project. Requires an authenticated ADMIN user.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateProjectRequest"
+            examples:
+              withDescription:
+                summary: Project with description
+                value:
+                  name: Website Redesign
+                  description: Redesign the public website
+              withoutDescription:
+                summary: Project without description
+                value:
+                  name: Internal Tools
+      responses:
+        "201":
+          description: Project created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMutationResponse"
+              example:
+                message: Project created successfully
+                project:
+                  id: 1
+                  name: Website Redesign
+                  description: Redesign the public website
+                  isActive: true
+                  createdAt: "2026-09-06T12:00:00.000Z"
+                  updatedAt: "2026-09-06T12:00:00.000Z"
+        "400":
+          description: Project name is missing or blank
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                missingName:
+                  value:
+                    message: Project name is required
+                blankName:
+                  value:
+                    message: Project name is required
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+        "409":
+          description: A project with the same name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: A project with this name already exists
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+  /api/projects/{id}:
+    parameters:
+      - $ref: "#/components/parameters/ProjectId"
+    get:
+      tags:
+        - Projects
+      summary: Get a project
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Project returned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectResponse"
+              example:
+                project:
+                  id: 1
+                  name: Website Redesign
+                  description: Redesign the public website
+                  isActive: true
+                  createdAt: "2026-09-06T12:00:00.000Z"
+                  updatedAt: "2026-09-06T12:00:00.000Z"
+        "400":
+          $ref: "#/components/responses/InvalidProjectId"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    put:
+      tags:
+        - Projects
+      summary: Update a project
+      description: Updates any supplied project fields. Requires an authenticated ADMIN user.
+      security:
+        - cookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProjectRequest"
+            examples:
+              renameAndDescribe:
+                summary: Update name and description
+                value:
+                  name: Website Redesign v2
+                  description: Updated public website scope
+              deactivate:
+                summary: Deactivate a project
+                value:
+                  isActive: false
+              clearDescription:
+                summary: Clear a description
+                value:
+                  description: null
+      responses:
+        "200":
+          description: Project updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMutationResponse"
+              example:
+                message: Project updated successfully
+                project:
+                  id: 1
+                  name: Website Redesign v2
+                  description: Updated public website scope
+                  isActive: true
+                  createdAt: "2026-09-06T12:00:00.000Z"
+                  updatedAt: "2026-09-07T09:30:00.000Z"
+        "400":
+          description: Invalid id, empty name, or non-boolean isActive
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              examples:
+                invalidId:
+                  value:
+                    message: Invalid project id
+                emptyName:
+                  value:
+                    message: Project name cannot be empty
+                invalidIsActive:
+                  value:
+                    message: isActive must be a boolean
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "409":
+          description: A project with the same name already exists
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+              example:
+                message: A project with this name already exists
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+    delete:
+      tags:
+        - Projects
+      summary: Delete or deactivate a project
+      description: Permanently deletes a project with no reports. Projects with existing reports are deactivated instead to preserve history.
+      security:
+        - cookieAuth: []
+      responses:
+        "200":
+          description: Project deleted or deactivated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProjectMutationResponse"
+              examples:
+                permanentlyDeleted:
+                  summary: No reports are attached
+                  value:
+                    message: Project deleted successfully
+                    project:
+                      id: 1
+                      name: Website Redesign
+                      description: Redesign the public website
+                      isActive: true
+                      createdAt: "2026-09-06T12:00:00.000Z"
+                      updatedAt: "2026-09-07T09:30:00.000Z"
+                deactivated:
+                  summary: Historical reports are attached
+                  value:
+                    message: Project has existing reports, so it was deactivated instead of deleted
+                    project:
+                      id: 2
+                      name: Legacy Migration
+                      description: Archived migration project
+                      isActive: false
+                      createdAt: "2026-09-01T12:00:00.000Z"
+                      updatedAt: "2026-09-07T09:30:00.000Z"
+        "400":
+          $ref: "#/components/responses/InvalidProjectId"
+        "401":
+          $ref: "#/components/responses/AuthenticationRequired"
+        "403":
+          $ref: "#/components/responses/AccessDenied"
+        "404":
+          $ref: "#/components/responses/ProjectNotFound"
+        "500":
+          $ref: "#/components/responses/InternalServerError"
+
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: token
+      description: HttpOnly cookie set by POST /api/auth/login. Clients must send cookies with requests.
+
+  parameters:
+    ProjectId:
+      name: id
+      in: path
+      required: true
+      description: Numeric project identifier. Non-numeric values return 400.
+      schema:
+        type: integer
+        format: int32
+        minimum: 1
+      examples:
+        valid:
+          value: 1
+        invalid:
+          value: abc
+
+  schemas:
+    Project:
+      type: object
+      required:
+        - id
+        - name
+        - description
+        - isActive
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: integer
+          format: int32
+          example: 1
+        name:
+          type: string
+          example: Website Redesign
+        description:
+          type: string
+          nullable: true
+          example: Redesign the public website
+        isActive:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2026-09-06T12:00:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2026-09-06T12:00:00.000Z"
+
+    CreateProjectRequest:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          description: Project name. Whitespace around the name is trimmed.
+          example: Website Redesign
+        description:
+          type: string
+          description: Optional project description. Whitespace around it is trimmed.
+          example: Redesign the public website
+
+    UpdateProjectRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+          example: Website Redesign v2
+        description:
+          type: string
+          nullable: true
+          example: Updated public website scope
+        isActive:
+          type: boolean
+          example: false
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          example: Internal server error
+
+    ProjectResponse:
+      type: object
+      required:
+        - project
+      properties:
+        project:
+          $ref: "#/components/schemas/Project"
+
+    ProjectListResponse:
+      type: object
+      required:
+        - projects
+      properties:
+        projects:
+          type: array
+          items:
+            $ref: "#/components/schemas/Project"
+
+    ProjectMutationResponse:
+      type: object
+      required:
+        - message
+        - project
+      properties:
+        message:
+          type: string
+          example: Project updated successfully
+        project:
+          $ref: "#/components/schemas/Project"
+
+  responses:
+    AuthenticationRequired:
+      description: Authentication cookie is missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+          examples:
+            missingCookie:
+              value:
+                message: Authentication required
+            invalidCookie:
+              value:
+                message: Invalid or expired token
+
+    AccessDenied:
+      description: Authenticated user is not an ADMIN
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+          example:
+            message: Access denied
+
+    InvalidProjectId:
+      description: The path parameter is not numeric
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+          example:
+            message: Invalid project id
+
+    ProjectNotFound:
+      description: No project exists with the supplied id
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+          example:
+            message: Project not found
+
+    InternalServerError:
+      description: Unexpected server error
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/MessageResponse"
+          example:
+            message: Internal server error
