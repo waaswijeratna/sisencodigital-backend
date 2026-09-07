@@ -4,6 +4,7 @@ import cors from "cors";
 import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
 import projectRoutes from "./routes/project.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.get("/", (req: Request, res: Response) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
