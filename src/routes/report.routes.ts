@@ -10,12 +10,18 @@ import {
 	updateDraftReport,
 	reviewReport
 } from "../controllers/report.controller.js";
+import {
+	getReports,
+	getReportById
+} from "../controllers/team-member-report.controller.js";
 
 const router = Router();
 
 router.use(authenticate);
 
 // only team members create their own reports
+router.get("/", requireRole(Role.TEAM_MEMBER), getReports);
+router.get("/:id", requireRole(Role.TEAM_MEMBER), getReportById);
 router.post("/", requireRole(Role.TEAM_MEMBER), createReport);
 router.delete("/:id", requireRole(Role.TEAM_MEMBER), deleteDraftReport);
 router.patch("/:id", requireRole(Role.TEAM_MEMBER), updateDraftReport);
