@@ -119,7 +119,7 @@ model ReportVersion {
   report Report @relation(fields: [reportId], references: [id], onDelete: Cascade)
 
   tasks        ReportVersionTask[]
-  nextTasks    ReportVersionNextTask?
+  nextTasks    ReportVersionNextTask[]
   blockers     ReportVersionBlocker[]
   achievements ReportVersionAchievement[]
   hours        ReportVersionHours?
@@ -153,17 +153,19 @@ model ReportVersionTask {
 
 // ==============================
 // NEXT WEEK TASKS
-// one row per version, tasks stored as a JSONB array
-// e.g. [{ "taskName": "...", "description": "..." }, ...]
 // ==============================
 
 model ReportVersionNextTask {
   id              Int @id @default(autoincrement())
-  reportVersionId Int @unique
+  reportVersionId Int
 
-  tasks Json
+  taskName    String
+  description String?
+  sortOrder   Int
 
   reportVersion ReportVersion @relation(fields: [reportVersionId], references: [id], onDelete: Cascade)
+
+  @@index([reportVersionId])
 }
 
 // ==============================

@@ -4,9 +4,12 @@ import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import {
   createReport as createReportService,
   deleteDraftReport as deleteDraftReportService,
-  forceDeleteReport as forceDeleteReportService
+  forceDeleteReport as forceDeleteReportService,
+  submitReport as submitReportService,
+  updateDraftReport as updateDraftReportService,
+  reviewReport as reviewReportService
 } from "../services/report.service.js";
-import { TaskPriority, TaskStatus } from "../../generated/prisma/enums.js";
+import { ReviewAction, TaskPriority, TaskStatus } from "../../generated/prisma/enums.js";
 
 const isValidEnumValue = <T extends Record<string, string>>(
   enumObj: T,
@@ -19,6 +22,83 @@ const isValidPercentage = (value: unknown): value is number =>
 
 const isNonNegativeNumber = (value: unknown): value is number =>
   typeof value === "number" && value >= 0;
+
+const validateReportContent = (body: Record<string, any>) => {
+  const {
+    tasksCompleted,
+    nextWeekTasks,
+    blockers,
+    achievements
+  } = body;
+
+  if (tasksCompleted !== undefined) {
+    if (!Array.isArray(tasksCompleted)) {
+      return "tasksCompleted must be an array";
+    }
+
+    for (const task of tasksCompleted) {
+      if (!task?.taskName || typeof task.taskName !== "string") {
+        return "Each completed task needs a taskName";
+      }
+      if (!isValidEnumValue(TaskPriority, task.priority)) {
+        return "Each completed task needs a valid priority";
+      }
+      if (!isValidEnumValue(TaskStatus, task.status)) {
+        return "Each completed task needs a valid status: NOT_STARTED, IN_PROGRESS, COMPLETED, or BLOCKED";
+      }
+      if (
+        !isValidPercentage(task.plannedPercentage) ||
+        !isValidPercentage(task.actualPercentage)
+      ) {
+        return "Task percentages must be numbers between 0 and 100";
+      }
+      if (!isNonNegativeNumber(task.plannedHours) || !isNonNegativeNumber(task.spentHours)) {
+        return "Task hours must be non-negative numbers";
+      }
+    }
+  }
+
+  if (nextWeekTasks !== undefined) {
+    if (!Array.isArray(nextWeekTasks)) {
+      return "nextWeekTasks must be an array";
+    }
+    for (const task of nextWeekTasks) {
+      if (!task?.taskName || typeof task.taskName !== "string") {
+        return "Each planned task needs a taskName";
+      }
+    }
+  }
+
+  if (blockers !== undefined) {
+    if (!Array.isArray(blockers)) {
+      return "blockers must be an array";
+    }
+    for (const blocker of blockers) {
+      if (!blocker?.description || typeof blocker.description !== "string") {
+        return "Each blocker needs a description";
+      }
+    }
+    if (blockers.filter((blocker: any) => blocker.isKeyIssue).length > 1) {
+      return "Only one blocker can be flagged as the key issue";
+    }
+  }
+
+  if (achievements !== undefined) {
+    if (!Array.isArray(achievements)) {
+      return "achievements must be an array";
+    }
+    for (const achievement of achievements) {
+      if (!achievement?.description || typeof achievement.description !== "string") {
+        return "Each achievement needs a description";
+      }
+    }
+    if (achievements.filter((achievement: any) => achievement.isKeyAchievement).length > 1) {
+      return "Only one achievement can be flagged as the key achievement";
+    }
+  }
+
+  return null;
+};
 
 export const createReport = async (req: AuthRequest, res: Response) => {
   try {
@@ -148,6 +228,162 @@ export const createReport = async (req: AuthRequest, res: Response) => {
 
     console.error(error);
 
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const submitReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+ 
+    if (Number.isNaN(id)) {
+      return res.status(400).json({ message: "Invalid report id" });
+    }
+
+    const validationError = validateReportContent(req.body ?? {});
+
+    if (validationError) {
+      return res.status(400).json({ message: validationError });
+    }
+ 
+    const report = await submitReportService(id, req.user!.userId, req.body ?? {});
+ 
+    return res.status(200).json({
+      message: "Report submitted for review",
+      report
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Report not found") {
+        return res.status(404).json({ message: error.message });
+      }
+ 
+      if (error.message === "You can only submit your own reports") {
+        return res.status(403).json({ message: error.message });
+      }
+ 
+      if (
+        error.message.startsWith("Cannot submit a report with status") ||
+        error.message === "Report has no version to submit" ||
+        error.message === "Add at least one completed task before submitting" ||
+        error.message === "Add at least one task planned for next week before submitting" ||
+        error.message === "Only reports needing correction can be updated"
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+
+      if (
+        error.message === "Only one blocker can be flagged as the key issue" ||
+        error.message === "Only one achievement can be flagged as the key achievement"
+      ) {
+        return res.status(400).json({ message: error.message });
+      }
+    }
+ 
+    console.error(error);
+ 
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const updateDraftReport = async (req: AuthRequest, res: Response) => {
+  const reportId = Number(req.params.id);
+
+  if (!Number.isInteger(reportId) || reportId <= 0) {
+    return res.status(400).json({ message: "Invalid report id" });
+  }
+
+  const validationError = validateReportContent(req.body ?? {});
+
+  if (validationError) {
+    return res.status(400).json({ message: validationError });
+  }
+
+  try {
+    const report = await updateDraftReportService(
+      reportId,
+      req.user!.userId,
+      req.body ?? {}
+    );
+
+    return res.status(200).json({
+      message: "Draft report updated successfully",
+      report
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Report not found") {
+        return res.status(404).json({ message: error.message });
+      }
+
+      if (error.message === "You can only update your own reports") {
+        return res.status(403).json({ message: error.message });
+      }
+
+      if (error.message === "Only draft reports can be updated") {
+        return res.status(409).json({ message: error.message });
+      }
+    }
+
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const reviewReport = async (req: AuthRequest, res: Response) => {
+  const reportId = parseReportId(req.params.id);
+
+  if (reportId === null) {
+    return res.status(400).json({ message: "Invalid report id" });
+  }
+
+  const { action, comment } = req.body ?? {};
+
+  if (action !== ReviewAction.APPROVED && action !== ReviewAction.REQUESTED_CHANGES) {
+    return res.status(400).json({
+      message: "action must be APPROVED or REQUESTED_CHANGES"
+    });
+  }
+
+  if (comment !== undefined && typeof comment !== "string") {
+    return res.status(400).json({ message: "comment must be a string" });
+  }
+
+  if (action === ReviewAction.REQUESTED_CHANGES && !comment?.trim()) {
+    return res.status(400).json({
+      message: "A comment is required when requesting changes"
+    });
+  }
+
+  try {
+    const report = await reviewReportService(
+      reportId,
+      req.user!.userId,
+      action,
+      comment
+    );
+
+    return res.status(200).json({
+      message:
+        action === ReviewAction.APPROVED
+          ? "Report approved successfully"
+          : "Changes requested for report",
+      report
+    });
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === "Report not found") {
+        return res.status(404).json({ message: error.message });
+      }
+      if (
+        error.message === "Only submitted reports can be reviewed" ||
+        error.message === "Report has no version to review"
+      ) {
+        return res.status(409).json({ message: error.message });
+      }
+    }
+
+    console.error(error);
     return res.status(500).json({ message: "Internal server error" });
   }
 };
