@@ -118,9 +118,45 @@ export const getCurrentUser = async (userId: number) => {
 };
 
 export const getTeamMembers = async () => {
-  return prisma.user.findMany({
+  const users = await prisma.user.findMany({
     where: { role: Role.TEAM_MEMBER },
-    select: { id: true, name: true, email: true },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      reports: {
+        orderBy: { weekStart: "desc" },
+        take: 1,
+        select: {
+          id: true,
+          weekStart: true,
+          weekEnd: true,
+          status: true,
+          versions: {
+            orderBy: { versionNumber: "desc" },
+            take: 1,
+            select: {
+              blockers: { select: { description: true, isKeyIssue: true } },
+              achievements: { select: { description: true, isKeyAchievement: true } }
+            }
+          }
+        }
+      }
+    },
     orderBy: { name: "asc" }
   });
+
+  return users.map(({ reports, ...user }) => ({
+    ...user,
+    latestReport: reports[0]
+      ? {
+          id: reports[0].id,
+          weekStart: reports[0].weekStart,
+          weekEnd: reports[0].weekEnd,
+          status: reports[0].status,
+          blockers: reports[0].versions[0]?.blockers ?? [],
+          achievements: reports[0].versions[0]?.achievements ?? []
+        }
+      : null
+  }));
 };
