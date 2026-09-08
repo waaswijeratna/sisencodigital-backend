@@ -76,6 +76,7 @@ const toSummary = (report: any) => ({
   weekStart: report.weekStart,
   weekEnd: report.weekEnd,
   status: report.status,
+  user: report.user,
   project: report.project,
   tasksCompletedCount: report.versions[0]?._count.tasks ?? 0,
   totalWorkedHours: report.versions[0]?.hours?.totalHours ?? 0,
@@ -91,6 +92,9 @@ export const getTeamMemberReports = async (
     where: buildWhere(userId, filters),
     orderBy: { weekStart: "desc" },
     include: {
+      user: {
+        select: { id: true, name: true, email: true }
+      },
       project: {
         select: { id: true, name: true }
       },

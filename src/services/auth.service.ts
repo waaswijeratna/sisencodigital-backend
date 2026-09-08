@@ -116,3 +116,11 @@ export const getCurrentUser = async (userId: number) => {
     }
   });
 };
+
+export const getTeamMembers = async () => {
+  return prisma.user.findMany({
+    where: { role: Role.TEAM_MEMBER },
+    select: { id: true, name: true, email: true },
+    orderBy: { name: "asc" }
+  });
+};

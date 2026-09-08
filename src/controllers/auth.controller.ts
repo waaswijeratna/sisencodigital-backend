@@ -2,7 +2,8 @@ import { type Request, type Response } from "express";
 import {
   registerUser,
   loginUser,
-  getCurrentUser
+  getCurrentUser,
+  getTeamMembers as getTeamMembersService
 } from "../services/auth.service.js";
 import type { AuthRequest } from "../middlewares/auth.middleware.js";
 
@@ -136,4 +137,14 @@ export const me = async (
   return res.status(200).json({
     user
   });
+};
+
+export const getTeamMembers = async (_req: AuthRequest, res: Response) => {
+  try {
+    const users = await getTeamMembersService();
+    return res.status(200).json({ users });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
