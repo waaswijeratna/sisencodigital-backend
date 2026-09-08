@@ -5,6 +5,7 @@ import "dotenv/config";
 import authRoutes from "./routes/auth.routes.js";
 import projectRoutes from "./routes/project.routes.js";
 import reportRoutes from "./routes/report.routes.js";
+import adminOverviewRoutes from "./routes/admin-overview.routes.js";
 
 const app = express();
 
@@ -26,6 +27,7 @@ app.get("/", (req: Request, res: Response) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/projects", projectRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/admin/overview", adminOverviewRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
