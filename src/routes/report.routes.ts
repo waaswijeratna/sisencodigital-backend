@@ -11,6 +11,7 @@ import {
 	reviewReport
 } from "../controllers/report.controller.js";
 import {
+	getCurrentReport,
 	getReports,
 	getReportById
 } from "../controllers/team-member-report.controller.js";
@@ -20,6 +21,7 @@ const router = Router();
 router.use(authenticate);
 
 // only team members create their own reports
+router.get("/me", requireRole(Role.TEAM_MEMBER), getCurrentReport);
 router.get("/", getReports);
 router.get("/:id", getReportById);
 router.post("/", requireRole(Role.TEAM_MEMBER), createReport);

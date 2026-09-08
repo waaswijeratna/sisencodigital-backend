@@ -105,6 +105,26 @@ export const getTeamMemberReports = async (
   return reports.map(toSummary);
 };
 
+export const getCurrentReportId = async (userId: number) => {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+
+  const tomorrow = new Date(today);
+  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+  const report = await prisma.report.findFirst({
+    where: {
+      userId,
+      weekStart: { lt: tomorrow },
+      weekEnd: { gte: today }
+    },
+    orderBy: { weekStart: "desc" },
+    select: { id: true }
+  });
+
+  return report?.id ?? null;
+};
+
 export const getTeamMemberReportById = async (
   reportId: number,
   userId?: number

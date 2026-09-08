@@ -4,9 +4,21 @@ import type { AuthRequest } from "../middlewares/auth.middleware.js";
 import { Role } from "../../generated/prisma/enums.js";
 import { parseReportFilters } from "../lib/report-filters.js";
 import {
+  getCurrentReportId,
   getTeamMemberReports,
   getTeamMemberReportById
 } from "../services/team-member-report.service.js";
+
+export const getCurrentReport = async (req: AuthRequest, res: Response) => {
+  try {
+    const reportId = await getCurrentReportId(req.user!.userId);
+
+    return res.status(200).json({ reportId });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
 
 export const getReports = async (req: AuthRequest, res: Response) => {
   try {
