@@ -7,6 +7,7 @@ import projectRoutes from "./routes/project.routes.js";
 import reportRoutes from "./routes/report.routes.js";
 import adminOverviewRoutes from "./routes/admin-overview.routes.js";
 import teamMemberOverviewRoutes from "./routes/team-member-overview.routes.js";
+import aiRoutes from "./routes/ai.routes.js";
 
 const app = express();
 
@@ -30,6 +31,7 @@ app.use("/api/projects", projectRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/admin/overview", adminOverviewRoutes);
 app.use("/api/team-member/overview", teamMemberOverviewRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);
